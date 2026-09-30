@@ -8,6 +8,7 @@ import os
 import re
 import subprocess
 import tempfile
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.request import urlretrieve
@@ -124,9 +125,12 @@ def write_questions(table: pa.Table) -> None:
             .config("spark.sql.execution.arrow.pyspark.enabled", "true")
             .config("spark.driver.extraClassPath", pg_driver)
             .config("spark.executor.extraClassPath", pg_driver)
-            .config("spark.ui.enabled", "false")
+            .config("spark.ui.enabled", "true")
+            .config("spark.ui.port", "4040")
             .getOrCreate()
         )
+        ui_url = spark.sparkContext.uiWebUrl or "http://localhost:4040"
+        log.info("Spark UI at %s", ui_url)
         try:
             frame = spark.read.parquet(parquet_path).select(
                 F.col("featuredQuestionId").cast("long").alias("featured_question_id"),
@@ -147,6 +151,7 @@ def write_questions(table: pa.Table) -> None:
                 properties=properties,
             )
         finally:
+            time.sleep(120)
             spark.stop()
 
 
