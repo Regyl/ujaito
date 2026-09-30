@@ -1,0 +1,5 @@
+.venv/
+sandbox/
+alembic/
+tests/
+__pycache__/

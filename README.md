@@ -1,0 +1,3 @@
+- Connectively
+- Glassdoor through [Bright Data](https://brightdata.com/cp/start)
+- Greenhouse (it's free)
