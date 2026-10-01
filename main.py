@@ -5,35 +5,26 @@ from __future__ import annotations
 import argparse
 import logging
 import os
-import re
-import subprocess
 import tempfile
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from urllib.request import urlretrieve
 
 import pyarrow as pa
 import pyarrow.parquet as pq
+from dotenv import load_dotenv
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
 
-from client import ConnectivelyClient
+from client import ConnectivelyClient, LmStudioClient
 from db.models import jdbc_properties, jdbc_url
 from exception import ConnectivelyError
-from model import LoginRequest, Question
+from model import BACKGROUND, AssessedQuestion, LoginRequest, Question
 from util.annotations import timed
 from util.log import setup_logging
 
-from dotenv import load_dotenv
-
 log = logging.getLogger(__name__)
 load_dotenv()
-
-# os.environ["JAVA_HOME"] = "/path/to/your/java/jdk"
-JDBC_DRIVER_URL = (
-    "https://repo1.maven.org/maven2/org/postgresql/postgresql/42.7.7/postgresql-42.7.7.jar"
-)
 
 ARROW_SCHEMA = pa.schema(
     [
@@ -45,8 +36,14 @@ ARROW_SCHEMA = pa.schema(
         pa.field("sourceUrl", pa.string()),
         pa.field("isHaroQuery", pa.bool_()),
         pa.field("categories", pa.list_(pa.string()), nullable=False),
+        pa.field("can_solve", pa.bool_(), nullable=False),
+        pa.field("fit_reason", pa.string(), nullable=False),
     ]
 )
+
+
+def is_technology(question: Question) -> bool:
+    return any(category.strip().casefold() == "technology" for category in question.categories)
 
 
 def _parse_due_date(value: str | None) -> datetime | None:
@@ -59,51 +56,22 @@ def _parse_due_date(value: str | None) -> datetime | None:
     return parsed.astimezone(timezone.utc)
 
 
-def questions_to_arrow(questions: list[Question]) -> pa.Table:
+def questions_to_arrow(questions: list[AssessedQuestion]) -> pa.Table:
     return pa.table(
         {
-            "question": [item.question for item in questions],
-            "source": [item.source for item in questions],
-            "due_date": [_parse_due_date(item.due_date) for item in questions],
-            "publicLink": [item.publicLink for item in questions],
-            "featuredQuestionId": [item.featuredQuestionId for item in questions],
-            "sourceUrl": [item.sourceUrl for item in questions],
-            "isHaroQuery": [item.isHaroQuery for item in questions],
-            "categories": [item.categories for item in questions],
+            "question": [item.question.question for item in questions],
+            "source": [item.question.source for item in questions],
+            "due_date": [_parse_due_date(item.question.due_date) for item in questions],
+            "publicLink": [item.question.publicLink for item in questions],
+            "featuredQuestionId": [item.question.featuredQuestionId for item in questions],
+            "sourceUrl": [item.question.sourceUrl for item in questions],
+            "isHaroQuery": [item.question.isHaroQuery for item in questions],
+            "categories": [item.question.categories for item in questions],
+            "can_solve": [item.assessment.can_solve for item in questions],
+            "fit_reason": [item.assessment.reason for item in questions],
         },
         schema=ARROW_SCHEMA,
     )
-
-
-def _java_binary() -> str:
-    home = os.environ.get("JAVA_HOME")
-    if home:
-        for name in ("java.exe", "java"):
-            candidate = Path(home) / "bin" / name
-            if candidate.is_file():
-                return str(candidate)
-    return "java"
-
-
-def _require_java_17() -> None:
-    try:
-        completed = subprocess.run(
-            [_java_binary(), "-version"],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-    except FileNotFoundError as exc:
-        raise ConnectivelyError("Java 17 or newer is required to run Spark", status=0) from exc
-    output = f"{completed.stderr}\n{completed.stdout}"
-    match = re.search(r'version "(?:1\.)?(\d+)', output)
-    major = int(match.group(1)) if match else 0
-    if major < 17:
-        raise ConnectivelyError(
-            f"Java 17 or newer is required to run Spark (found Java {major or 'unknown'})",
-            status=0,
-        )
-
 
 def _postgres_jdbc_jar() -> str:
     destination = Path(os.getenv("POSTGRESQL_JAR_PATH"))
@@ -114,7 +82,6 @@ def _postgres_jdbc_jar() -> str:
 
 @timed
 def write_questions(table: pa.Table) -> None:
-    _require_java_17()
     pg_driver = _postgres_jdbc_jar()
     with tempfile.TemporaryDirectory(prefix="connectively-") as directory:
         parquet_path = str(Path(directory) / "questions.parquet")
@@ -141,6 +108,8 @@ def write_questions(table: pa.Table) -> None:
                 F.col("sourceUrl").alias("source_url"),
                 F.col("isHaroQuery").alias("is_haro_query"),
                 F.to_json(F.col("categories")).alias("categories"),
+                F.col("can_solve"),
+                F.col("fit_reason"),
             )
             properties = jdbc_properties()
             properties["truncate"] = "true"
@@ -168,20 +137,18 @@ def _login_request_from_env() -> LoginRequest:
 
 def main() -> None:
     setup_logging()
-    parser = argparse.ArgumentParser(description="Load Connectively questions into PostgreSQL")
-    parser.add_argument(
-        "--top-opportunities",
-        action="store_true",
-        help='Fetch top opportunities (query param top_opportunities=true)',
-    )
-    args = parser.parse_args()
 
     client = ConnectivelyClient()
     client.login(_login_request_from_env())
-    questions = client.question_list(
-        top_opportunities=True if args.top_opportunities else None
-    )
-    table = questions_to_arrow(questions)
+    questions = client.question_list()
+    technology = [item for item in questions if is_technology(item)]
+    log.info("fetched %s questions, kept %s in Technology", len(questions), len(technology))
+    studio = LmStudioClient()
+    assessed = [
+        AssessedQuestion(question=item, assessment=studio.assess(item.question, BACKGROUND))
+        for item in technology
+    ]
+    table = questions_to_arrow(assessed)
     write_questions(table)
     log.info("saved %s questions", table.num_rows)
 

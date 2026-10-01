@@ -1,14 +1,16 @@
-"""Package placement rules for exceptions, dataclasses, and clients."""
+"""Package placement rules and a ban on schema statements in Python."""
 
 from __future__ import annotations
 
 import ast
+import re
 from pathlib import Path
 
 from archunitpython import assert_passes, project_files
 from archunitpython.files.assertion.custom_file_logic import FileInfo
 
 ROOT = str(Path(__file__).resolve().parents[1])
+_DDL = re.compile(r"\b(ALTER|CREATE)\s+TABLE\b", re.IGNORECASE)
 
 
 def _in_package(file: FileInfo, package: str) -> bool:
@@ -44,6 +46,10 @@ def dataclasses_reside_in_model_package(file: FileInfo) -> bool:
     return True
 
 
+def python_files_contain_no_ddl(file: FileInfo) -> bool:
+    return _DDL.search(file.content) is None
+
+
 def clients_reside_in_client_package(file: FileInfo) -> bool:
     for node in _class_defs(file):
         if node.name.endswith("Client") and not _in_package(file, "client"):
@@ -72,6 +78,19 @@ def test_dataclasses_reside_in_model_package() -> None:
         .adhere_to(
             dataclasses_reside_in_model_package,
             "classes marked with dataclass reside in the model package",
+        )
+    )
+    assert_passes(rule)
+
+
+def test_python_files_contain_no_ddl() -> None:
+    rule = (
+        project_files(ROOT)
+        .with_name("*.py")
+        .should()
+        .adhere_to(
+            python_files_contain_no_ddl,
+            "schema changes live in SQL, not Python",
         )
     )
     assert_passes(rule)

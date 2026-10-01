@@ -6,5 +6,7 @@ CREATE TABLE IF NOT EXISTS questions (
     public_link TEXT,
     source_url TEXT,
     is_haro_query BOOLEAN,
-    categories JSONB NOT NULL DEFAULT '[]'::jsonb
+    categories JSONB NOT NULL DEFAULT '[]'::jsonb,
+    can_solve BOOLEAN NOT NULL,
+    fit_reason TEXT NOT NULL
 );

@@ -46,10 +46,8 @@ class ConnectivelyClient:
         return self._token
 
     @timed
-    def question_list(self, top_opportunities: bool | None = None) -> list[Question]:
+    def question_list(self) -> list[Question]:
         query: dict[str, str] | None = None
-        if top_opportunities:
-            query = {"top_opportunities": "true"}
         _status, _token, body = self._request("GET", "/question-list", query=query)
         payload = json.loads(body.decode("utf-8")) if body else []
         if not isinstance(payload, list):
