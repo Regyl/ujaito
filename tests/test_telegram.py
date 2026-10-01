@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from client.telegram import MAX_TEXT_LENGTH, format_alert
-from model import AssessedQuestion, FitAssessment, Question
+from client.telegram import MAX_TEXT_LENGTH, apply
+from model import AssessedQuestion, FitAssessment, ConnectivelyQuestion
 
 
 def _assessed(question: str, *, link: str | None, reason: str) -> AssessedQuestion:
     return AssessedQuestion(
-        question=Question(
+        question=ConnectivelyQuestion(
             question=question,
             source=None,
             due_date=None,
@@ -23,7 +23,7 @@ def _assessed(question: str, *, link: str | None, reason: str) -> AssessedQuesti
 
 
 def test_format_alert_includes_question_link_and_reason() -> None:
-    text = format_alert(
+    text = apply(
         _assessed(
             "How do you run Kafka?",
             link="https://connectively.example/q/7",
@@ -37,11 +37,11 @@ def test_format_alert_includes_question_link_and_reason() -> None:
 
 
 def test_format_alert_omits_missing_link() -> None:
-    text = format_alert(_assessed("How do you run Kafka?", link=None, reason="Kafka experience applies."))
+    text = apply(_assessed("How do you run Kafka?", link=None, reason="Kafka experience applies."))
     assert "How do you run Kafka?" in text
     assert "https://" not in text
 
 
 def test_format_alert_truncates_to_telegram_limit() -> None:
-    text = format_alert(_assessed("Q" * 5000, link="https://example.com/q", reason="because"))
+    text = apply(_assessed("Q" * 5000, link="https://example.com/q", reason="because"))
     assert len(text) == MAX_TEXT_LENGTH

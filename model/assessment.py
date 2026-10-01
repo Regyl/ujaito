@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from model.connectively import Question
+from model.connectively import ConnectivelyQuestion
 
 
 @dataclass(frozen=True)
@@ -15,5 +15,5 @@ class FitAssessment:
 
 @dataclass(frozen=True)
 class AssessedQuestion:
-    question: Question
+    question: ConnectivelyQuestion
     assessment: FitAssessment

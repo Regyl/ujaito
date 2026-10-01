@@ -1,5 +1,4 @@
 from model.assessment import AssessedQuestion, FitAssessment
-from model.connectively import LoginRequest, Question
-from model.profile import BACKGROUND
+from model.connectively import LoginRequest, ConnectivelyQuestion
 
-__all__ = ["BACKGROUND", "AssessedQuestion", "FitAssessment", "LoginRequest", "Question"]
+__all__ = ["AssessedQuestion", "FitAssessment", "LoginRequest", "ConnectivelyQuestion"]

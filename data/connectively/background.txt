@@ -1,0 +1,3 @@
+Technical Lead and Senior Software Engineer with 5+ years of experience designing and building scalable distributed systems and high-throughput backend platforms.
+Experienced in Java, Spring Boot, microservices, event-driven architecture, Kafka, PostgreSQL, ClickHouse, and cloud-native technologies. I specialize in building reliable, resilient, and maintainable systems that process large volumes of data in real time.
+Currently leading the development of cybersecurity and automation platforms, including EDR and SOAR solutions

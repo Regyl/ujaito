@@ -12,7 +12,7 @@ class LoginRequest:
 
 
 @dataclass(frozen=True)
-class Question:
+class ConnectivelyQuestion:
     question: str
     source: str | None
     due_date: str | None

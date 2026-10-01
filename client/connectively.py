@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import json
+import os
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 from exception import AuthError, ConnectivelyError, ForbiddenError, ValidationError
-from model import LoginRequest, Question
+from model import LoginRequest, ConnectivelyQuestion
 from util.annotations import timed
 
 BASE_URL = "https://www.connectively.us/api/external-users"
@@ -25,9 +26,10 @@ class ConnectivelyClient:
         self._base_url = base_url.rstrip("/")
         self._token: str | None = None
         self._credentials: LoginRequest | None = None
+        self._login(self._get_creds())
 
     @timed
-    def login(self, request: LoginRequest) -> str:
+    def _login(self, request: LoginRequest) -> str:
         if not request.username:
             raise ValidationError("username is required", status=400)
         if not 8 <= len(request.password) <= 30:
@@ -46,13 +48,23 @@ class ConnectivelyClient:
         return self._token
 
     @timed
-    def question_list(self) -> list[Question]:
+    def question_list(self) -> list[ConnectivelyQuestion]:
         query: dict[str, str] | None = None
         _status, _token, body = self._request("GET", "/question-list", query=query)
         payload = json.loads(body.decode("utf-8")) if body else []
         if not isinstance(payload, list):
             raise ConnectivelyError("question list response was not an array", status=500)
         return [_parse_question(item) for item in payload]
+
+    def _get_creds(self) -> LoginRequest:
+        username = os.getenv("CONNECTIVELY_USERNAME")
+        password = os.getenv("CONNECTIVELY_PWD")
+        if not username or not password:
+            raise ConnectivelyError(
+                "CONNECTIVELY_USERNAME and CONNECTIVELY_PASSWORD are required",
+                status=0,
+            )
+        return LoginRequest(username=username, password=password)
 
     def _request(
         self,
@@ -103,7 +115,7 @@ class ConnectivelyClient:
     def _reauthenticate(self) -> None:
         if self._credentials is None:
             raise AuthError("not logged in", status=401)
-        self.login(self._credentials)
+        self._login(self._credentials)
 
 
 def _send(request: Request) -> tuple[int, str | None, bytes]:
@@ -133,7 +145,7 @@ def _error_message(raw: bytes) -> str:
     return text
 
 
-def _parse_question(item: dict) -> Question:
+def _parse_question(item: dict) -> ConnectivelyQuestion:
     if not isinstance(item, dict):
         raise ConnectivelyError("question entry was not an object", status=500)
     categories = item.get("categories") or []
@@ -143,7 +155,7 @@ def _parse_question(item: dict) -> Question:
     featured_id = item.get("featuredQuestionId")
     if not isinstance(question, str) or featured_id is None:
         raise ConnectivelyError("question entry missing required fields", status=500)
-    return Question(
+    return ConnectivelyQuestion(
         question=question,
         source=item.get("source"),
         due_date=item.get("due_date"),

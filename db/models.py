@@ -1,4 +1,4 @@
-"""PostgreSQL JDBC settings for the Spark job."""
+"""PostgreSQL connection settings."""
 
 from __future__ import annotations
 
@@ -15,18 +15,12 @@ def _postgres_settings() -> dict[str, str]:
     }
 
 
-def jdbc_url() -> str:
-    settings = _postgres_settings()
-    return (
-        f"jdbc:postgresql://{settings['host']}:{settings['port']}/{settings['db']}"
-        "?stringtype=unspecified"
-    )
-
-
-def jdbc_properties() -> dict[str, str]:
+def postgres_connect_kwargs() -> dict[str, str]:
     settings = _postgres_settings()
     return {
+        "host": settings["host"],
+        "port": settings["port"],
+        "dbname": settings["db"],
         "user": settings["user"],
         "password": settings["password"],
-        "driver": "org.postgresql.Driver",
     }

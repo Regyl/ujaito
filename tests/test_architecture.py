@@ -10,7 +10,8 @@ from archunitpython import assert_passes, project_files
 from archunitpython.files.assertion.custom_file_logic import FileInfo
 
 ROOT = str(Path(__file__).resolve().parents[1])
-_DDL = re.compile(r"\b(ALTER|CREATE)\s+TABLE\b", re.IGNORECASE)
+_SCHEMA_DDL = re.compile(r"\b(ALTER|CREATE)\s+")
+_INSERT = re.compile(r"\bINSERT INTO\s+")
 
 
 def _in_package(file: FileInfo, package: str) -> bool:
@@ -47,7 +48,11 @@ def dataclasses_reside_in_model_package(file: FileInfo) -> bool:
 
 
 def python_files_contain_no_ddl(file: FileInfo) -> bool:
-    return _DDL.search(file.content) is None
+    if _SCHEMA_DDL.search(file.content):
+        return False
+    if _INSERT.search(file.content) and not _in_package(file, "repository"):
+        return False
+    return True
 
 
 def clients_reside_in_client_package(file: FileInfo) -> bool:
@@ -90,7 +95,7 @@ def test_python_files_contain_no_ddl() -> None:
         .should()
         .adhere_to(
             python_files_contain_no_ddl,
-            "schema changes live in SQL, not Python",
+            "schema changes live in SQL, and INSERT INTO lives in the repository package",
         )
     )
     assert_passes(rule)

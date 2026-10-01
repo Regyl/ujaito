@@ -8,12 +8,12 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 from exception.telegram import TelegramError
+from mapper import connectively_mapper
 from model.assessment import AssessedQuestion
 from util.annotations import timed
 
 API_URL = "https://api.telegram.org/bot{token}/sendMessage"
 TIMEOUT_SECONDS = 30
-MAX_TEXT_LENGTH = 4096
 
 
 class TelegramClient:
@@ -32,7 +32,7 @@ class TelegramClient:
     @timed
     def notify(self, item: AssessedQuestion) -> None:
         body = json.dumps(
-            {"chat_id": self._chat_id, "text": format_alert(item)}
+            {"chat_id": self._chat_id, "text": connectively_mapper.get_tg_notification(item)}
         ).encode("utf-8")
         request = Request(
             API_URL.format(token=self._bot_token),
@@ -49,15 +49,6 @@ class TelegramClient:
             raise TelegramError("send response was not JSON", status=500) from exc
         if not isinstance(payload, dict) or payload.get("ok") is not True:
             raise TelegramError(_error_message(raw) or "send failed", status=status or 500)
-
-
-def format_alert(item: AssessedQuestion) -> str:
-    sections = [str(item.question.featuredQuestionId), item.question.question]
-    link = (item.question.publicLink or "").strip()
-    if link:
-        sections.append(link)
-    sections.append(item.assessment.reason)
-    return "\n\n".join(sections)[:MAX_TEXT_LENGTH]
 
 
 def _send(request: Request) -> tuple[int, bytes]:

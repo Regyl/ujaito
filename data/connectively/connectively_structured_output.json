@@ -1,0 +1,18 @@
+{
+  "type": "object",
+  "properties": {
+    "reason": {
+      "type": "string",
+      "description": "Explanation of the decision"
+    },
+    "can_solve": {
+      "type": "boolean",
+      "description": "Should I answer the question from user prompt or not"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "reason",
+    "can_solve"
+  ]
+}

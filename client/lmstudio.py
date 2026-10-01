@@ -9,7 +9,10 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 from exception.lmstudio import LmStudioError
+from mapper import connectively_mapper
+from model import ConnectivelyQuestion
 from model.assessment import FitAssessment
+from util import file_util
 from util.annotations import timed
 
 DEFAULT_BASE_URL = "http://127.0.0.1:1234/v1"
@@ -17,7 +20,7 @@ DEFAULT_MODEL = "google/gemma-4-e4b"
 TIMEOUT_SECONDS = 180
 
 _FENCE = re.compile(r"```(?:json)?\s*(\{.*?\})\s*```", re.DOTALL)
-
+SYSTEM_PROMPT_FILE_PATH = "connectively/system_prompt.txt"
 
 class LmStudioClient:
     """Asks a local model whether a background can answer a question."""
@@ -38,16 +41,20 @@ class LmStudioClient:
         self._api_token = configured_token.strip()
 
     @timed
-    def assess(self, question: str, background: str) -> FitAssessment:
+    def assess(self, question: ConnectivelyQuestion) -> FitAssessment:
+        system_prompt = file_util.get_file_payload(SYSTEM_PROMPT_FILE_PATH)
         body = {
             "model": self._model,
             "temperature": 0,
             "messages": [
                 {
                     "role": "system",
-                    "content": "Respond with JSON only. Do not add prose around the JSON object.",
+                    "content": system_prompt,
                 },
-                {"role": "user", "content": _prompt(question, background)},
+                {
+                    "role": "user",
+                    "content": connectively_mapper.get_ai_prompt(question)
+                },
             ],
         }
         data = json.dumps(body).encode("utf-8")
@@ -93,16 +100,6 @@ def parse_fit_assessment(text: str) -> FitAssessment:
     if not isinstance(can_solve, bool) or not isinstance(reason, str) or not reason.strip():
         raise LmStudioError("assessment response missing required fields", status=500)
     return FitAssessment(can_solve=can_solve, reason=reason.strip())
-
-
-def _prompt(question: str, background: str) -> str:
-    return (
-        "Decide whether this candidate can credibly answer the journalist query "
-        "from their background alone.\n\n"
-        f"Candidate background:\n{background}\n\n"
-        f"Question:\n{question}\n\n"
-        'Respond with JSON only: {"can_solve": true or false, "reason": "one or two sentences"}'
-    )
 
 
 def _message_content(payload: object) -> str:

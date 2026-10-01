@@ -7,11 +7,11 @@ import pytest
 from client.lmstudio import parse_fit_assessment
 from exception import LmStudioError
 from main import is_technology
-from model import Question
+from model import ConnectivelyQuestion
 
 
-def _question(*categories: str) -> Question:
-    return Question(
+def _question(*categories: str) -> ConnectivelyQuestion:
+    return ConnectivelyQuestion(
         question="How do you scale a backend?",
         source=None,
         due_date=None,
