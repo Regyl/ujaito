@@ -16,7 +16,7 @@ from dotenv import load_dotenv
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
 
-from client import ConnectivelyClient, LmStudioClient
+from client import ConnectivelyClient, LmStudioClient, TelegramClient
 from db.models import jdbc_properties, jdbc_url
 from exception import ConnectivelyError
 from model import BACKGROUND, AssessedQuestion, LoginRequest, Question
@@ -148,6 +148,12 @@ def main() -> None:
         AssessedQuestion(question=item, assessment=studio.assess(item.question, BACKGROUND))
         for item in technology
     ]
+    solvable = [item for item in assessed if item.assessment.can_solve]
+    if solvable:
+        telegram = TelegramClient()
+        for item in solvable:
+            telegram.notify(item)
+        log.info("notified %s solvable questions", len(solvable))
     table = questions_to_arrow(assessed)
     write_questions(table)
     log.info("saved %s questions", table.num_rows)
