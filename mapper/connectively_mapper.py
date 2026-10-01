@@ -1,22 +1,36 @@
+import re
+
 from model import AssessedQuestion, ConnectivelyQuestion
 from util import file_util
 
 MAX_TEXT_LENGTH = 4096
 BACKGROUND_FILE_PATH = "connectively/background.txt"
+_MARKDOWN_V2_SPECIAL = re.compile(r"([_*\[\]()~`>#+\-=|{}.!\\])")
+
+
+def _escape_markdown_v2(value: object) -> str:
+    return _MARKDOWN_V2_SPECIAL.sub(r"\\\1", str(value))
+
 
 def get_tg_notification(item: AssessedQuestion) -> str:
+    source = _escape_markdown_v2(item.question.source)
+    due_date = _escape_markdown_v2(item.question.due_date)
+    categories = _escape_markdown_v2(", ".join(item.question.categories))
+    question = _escape_markdown_v2(item.question.question)
+    reason = _escape_markdown_v2(item.assessment.reason)
+    link = _escape_markdown_v2(item.question.publicLink)
     msg = f"""
-    Company: {item.question.source}
-    Due date: {item.question.due_date}
-    Categories: {", ".join(item.question.categories)}
-    
-    ----
-    Question: {item.question.question}
-    
-    ---
-    Apply reason: {item.assessment.reason}
-    
-    Link: {item.question.publicLink}
+    *Company:* {source}
+    *Due date:* {due_date}
+    *Categories:* {categories}
+
+    \\-\\-\\-\\-\\-\\-
+    *Question:* {question}
+
+    \\-\\-\\-\\-\\-\\-
+    *Apply reason:* {reason}
+
+    [Link]({link})
     """
     return msg[:MAX_TEXT_LENGTH]
 

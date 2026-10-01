@@ -17,7 +17,7 @@ TIMEOUT_SECONDS = 30
 
 
 class TelegramClient:
-    """Sends a plain-text alert for a question the candidate can answer."""
+    """Sends a MarkdownV2 alert for a question the candidate can answer."""
 
     def __init__(self, bot_token: str | None = None, chat_id: str | None = None) -> None:
         token = bot_token if bot_token is not None else os.getenv("TELEGRAM_BOT_TOKEN")
@@ -32,7 +32,11 @@ class TelegramClient:
     @timed
     def notify(self, item: AssessedQuestion) -> None:
         body = json.dumps(
-            {"chat_id": self._chat_id, "text": connectively_mapper.get_tg_notification(item)}
+            {
+                "chat_id": self._chat_id,
+                "text": connectively_mapper.get_tg_notification(item),
+                "parse_mode": "MarkdownV2",
+            }
         ).encode("utf-8")
         request = Request(
             API_URL.format(token=self._bot_token),
