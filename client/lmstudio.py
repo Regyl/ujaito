@@ -10,7 +10,7 @@ from urllib.request import Request, urlopen
 
 from exception.lmstudio import LmStudioError
 from mapper import connectively_mapper
-from model import ConnectivelyQuestion
+from model import ConnectivelyQuestion, constants
 from model.assessment import FitAssessment
 from util import file_util
 from util.annotations import timed
@@ -18,6 +18,7 @@ from util.annotations import timed
 DEFAULT_BASE_URL = "http://127.0.0.1:1234/v1"
 DEFAULT_MODEL = "google/gemma-4-e4b"
 TIMEOUT_SECONDS = 180
+TEMPERATURE = 0.8
 
 _FENCE = re.compile(r"```(?:json)?\s*(\{.*?\})\s*```", re.DOTALL)
 SYSTEM_PROMPT_FILE_PATH = "connectively/system_prompt.txt"
@@ -45,7 +46,7 @@ class LmStudioClient:
         system_prompt = file_util.get_file_payload(SYSTEM_PROMPT_FILE_PATH)
         body = {
             "model": self._model,
-            "temperature": 0,
+            "temperature": TEMPERATURE,
             "messages": [
                 {
                     "role": "system",
@@ -57,7 +58,7 @@ class LmStudioClient:
                 },
             ],
         }
-        data = json.dumps(body).encode("utf-8")
+        data = json.dumps(body).encode(constants.ENCODING)
         request = Request(
             f"{self._base_url}/chat/completions",
             data=data,
