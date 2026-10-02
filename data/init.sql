@@ -10,3 +10,10 @@ CREATE TABLE IF NOT EXISTS questions (
     can_solve BOOLEAN NOT NULL,
     fit_reason TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS jobs (
+    board TEXT NOT NULL,
+    job_id BIGINT NOT NULL,
+    model JSONB NOT NULL,
+    PRIMARY KEY (board, job_id)
+);

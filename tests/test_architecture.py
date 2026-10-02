@@ -1,4 +1,4 @@
-"""Package placement rules and a ban on schema statements in Python."""
+"""Package placement rules, and bans on schema statements and print()."""
 
 from __future__ import annotations
 
@@ -47,6 +47,22 @@ def dataclasses_reside_in_model_package(file: FileInfo) -> bool:
     return True
 
 
+def _calls_print(node: ast.AST) -> bool:
+    if not isinstance(node, ast.Call):
+        return False
+    func = node.func
+    if isinstance(func, ast.Name):
+        return func.id == "print"
+    if isinstance(func, ast.Attribute) and func.attr == "print":
+        return isinstance(func.value, ast.Name) and func.value.id == "builtins"
+    return False
+
+
+def python_files_contain_no_print(file: FileInfo) -> bool:
+    tree = ast.parse(file.content)
+    return not any(_calls_print(node) for node in ast.walk(tree))
+
+
 def python_files_contain_no_ddl(file: FileInfo) -> bool:
     if _SCHEMA_DDL.search(file.content):
         return False
@@ -83,6 +99,19 @@ def test_dataclasses_reside_in_model_package() -> None:
         .adhere_to(
             dataclasses_reside_in_model_package,
             "classes marked with dataclass reside in the model package",
+        )
+    )
+    assert_passes(rule)
+
+
+def test_python_files_contain_no_print() -> None:
+    rule = (
+        project_files(ROOT)
+        .with_name("*.py")
+        .should()
+        .adhere_to(
+            python_files_contain_no_print,
+            "output goes through logging, not print()",
         )
     )
     assert_passes(rule)

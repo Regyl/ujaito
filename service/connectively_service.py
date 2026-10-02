@@ -6,6 +6,7 @@ from repository import connectively_repository
 
 log = logging.getLogger(__name__)
 
+
 def is_technology(question: ConnectivelyQuestion) -> bool:
     return any(category.strip().casefold() == "technology" for category in question.categories)
 

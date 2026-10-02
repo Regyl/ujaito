@@ -6,18 +6,25 @@ import logging
 
 from dotenv import load_dotenv
 
-from service import connectively_service
+from model.run_type import RunType
+from service import connectively_service, greenhouse_service
 from util.log_util import setup_logging
 
 log = logging.getLogger(__name__)
 
 
-def main() -> None:
+def main(run_type: RunType) -> None:
     load_dotenv()
     setup_logging()
 
-    connectively_service.run()
+    match run_type:
+        case RunType.CONNECTIVELY:
+            connectively_service.run()
+        case RunType.GREENHOUSE:
+            greenhouse_service.run()
+        case _:
+            raise RuntimeError(f"Invalid run type: {run_type}")
 
 
 if __name__ == "__main__":
-    main()
+    main(RunType.GREENHOUSE)
