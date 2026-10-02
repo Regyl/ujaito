@@ -22,7 +22,12 @@ def main(run_type: RunType) -> None:
         case RunType.CONNECTIVELY:
             connectively_service.run()
         case RunType.GREENHOUSE:
-            greenhouse_service.run()
+            greenhouse_service.run(
+                included_keywords=["java", "relocation"],
+                excluded_keywords=[],
+                included_phrases=[],
+                excluded_phrases=[],
+            )
     log.info(f"Finished {run_type.name}")
 
 

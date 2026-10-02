@@ -10,17 +10,25 @@ from mapper.greenhouse_mapper import apply as to_job
 from service import greenhouse_service
 from service.greenhouse_service import matches
 
+_SEARCH = dict(
+    included_keywords=["java"],
+    excluded_keywords=[],
+    included_phrases=["relocation"],
+    excluded_phrases=[],
+)
+
 
 def test_both_keywords_required() -> None:
-    assert matches({"title": "Java Engineer", "content": "<p>We offer relocation.</p>"})
-    assert matches({"title": "JAVA platform", "content": "<p>Relocation package</p>"})
-    assert not matches({"title": "Java Engineer", "content": "<p>Remote only.</p>"})
-    assert not matches({"title": "Designer", "content": "<p>relocation package</p>"})
+    assert matches({"title": "Java Engineer", "content": "<p>We offer relocation.</p>"}, **_SEARCH)
+    assert matches({"title": "JAVA platform", "content": "<p>Relocation package</p>"}, **_SEARCH)
+    assert not matches({"title": "Java Engineer", "content": "<p>Remote only.</p>"}, **_SEARCH)
+    assert not matches({"title": "Designer", "content": "<p>relocation package</p>"}, **_SEARCH)
 
 
 def test_javascript_does_not_match() -> None:
     assert not matches(
-        {"title": "JavaScript Engineer", "content": "<p>We offer relocation.</p>"}
+        {"title": "JavaScript Engineer", "content": "<p>We offer relocation.</p>"},
+        **_SEARCH,
     )
 
 
@@ -29,7 +37,52 @@ def test_html_is_stripped_before_matching() -> None:
         "title": "Engineer",
         "content": "<div><strong>Java</strong> role with relocation support</div>",
     }
-    assert matches(job)
+    assert matches(job, **_SEARCH)
+
+
+def test_excluded_keyword_rejects_whole_word_only() -> None:
+    assert not matches(
+        {"title": "Java Intern", "content": "<p>We offer relocation.</p>"},
+        **(_SEARCH | {"excluded_keywords": ["intern"]}),
+    )
+    assert matches(
+        {"title": "JavaScript Engineer", "content": "<p>We offer relocation.</p>"},
+        included_keywords=[],
+        excluded_keywords=["java"],
+        included_phrases=["relocation"],
+        excluded_phrases=[],
+    )
+    assert not matches(
+        {"title": "Java and JavaScript Engineer", "content": "<p>We offer relocation.</p>"},
+        included_keywords=[],
+        excluded_keywords=["java"],
+        included_phrases=["relocation"],
+        excluded_phrases=[],
+    )
+
+
+def test_excluded_phrase_rejects_matching_post() -> None:
+    terms = _SEARCH | {"excluded_phrases": ["no visa"]}
+    assert not matches(
+        {"title": "Java Engineer", "content": "<p>We offer relocation. No visa sponsorship.</p>"},
+        **terms,
+    )
+    assert matches(
+        {"title": "Java Engineer", "content": "<p>We offer relocation.</p>"},
+        **terms,
+    )
+
+
+def test_phrase_matches_inside_longer_word() -> None:
+    job = {"title": "JavaScript Engineer", "content": "<p>We offer relocation.</p>"}
+    assert matches(
+        job,
+        included_keywords=[],
+        excluded_keywords=[],
+        included_phrases=["java", "relocation"],
+        excluded_phrases=[],
+    )
+    assert not matches(job, **_SEARCH)
 
 
 def test_job_model_keeps_the_full_post() -> None:
@@ -87,7 +140,7 @@ def test_run_fetches_every_board_and_keeps_going_after_a_failure() -> None:
         patch("service.greenhouse_service.greenhouse.fetch_jobs", side_effect=fetch_jobs),
         patch("service.greenhouse_service.greenhouse_repository.write_job", side_effect=written.append),
     ):
-        greenhouse_service.run()
+        greenhouse_service.run(**_SEARCH)
 
     assert set(fetched) == set(boards)
     assert len(fetched) == len(boards)
