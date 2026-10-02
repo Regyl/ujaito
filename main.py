@@ -19,11 +19,12 @@ def main(run_type: RunType) -> None:
 
     match run_type:
         case RunType.CONNECTIVELY:
+            log.info("Starting Connectively Questions")
             connectively_service.run()
         case RunType.GREENHOUSE:
+            log.info("Starting Greenhouse Jobs")
             greenhouse_service.run()
-        case _:
-            raise RuntimeError(f"Invalid run type: {run_type}")
+    log.info("Finish")
 
 
 if __name__ == "__main__":
