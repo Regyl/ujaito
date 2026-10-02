@@ -44,7 +44,7 @@ def _process_board(board: str) -> None:
 
         model = greenhouse_mapper.apply(board, job)
         greenhouse_repository.write_job(model)
-        log.info("found %s", model.absolute_url)
+        log.info(f"found {model.title}:{model.location}")
 
 
 def run() -> None:

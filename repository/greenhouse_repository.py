@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict
-
 import psycopg
 from psycopg.types.json import Json
 
@@ -13,11 +11,21 @@ from util.annotations import timed
 
 INSERT_JOB = """
 INSERT INTO jobs (
+    source,
     board,
     job_id,
-    model
-) VALUES (%s, %s, %s)
-ON CONFLICT (board, job_id) DO UPDATE SET model = EXCLUDED.model
+    title,
+    absolute_url,
+    location,
+    content,
+    payload
+) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+ON CONFLICT (source, board, job_id) DO UPDATE SET
+    title = EXCLUDED.title,
+    absolute_url = EXCLUDED.absolute_url,
+    location = EXCLUDED.location,
+    content = EXCLUDED.content,
+    payload = EXCLUDED.payload
 """
 
 
@@ -25,4 +33,16 @@ ON CONFLICT (board, job_id) DO UPDATE SET model = EXCLUDED.model
 def write_job(job: GreenhouseJob) -> None:
     with psycopg.connect(**postgres_connect_kwargs()) as connection:
         with connection.cursor() as cursor:
-            cursor.execute(INSERT_JOB, (job.board, job.job_id, Json(asdict(job))))
+            cursor.execute(
+                INSERT_JOB,
+                (
+                    job.source,
+                    job.board,
+                    job.job_id,
+                    job.title,
+                    job.absolute_url,
+                    job.location,
+                    job.content,
+                    Json(job.payload),
+                ),
+            )

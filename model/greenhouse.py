@@ -7,6 +7,7 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class GreenhouseJob:
+    source: str
     board: str
     job_id: int
     title: str

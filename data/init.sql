@@ -12,8 +12,13 @@ CREATE TABLE IF NOT EXISTS questions (
 );
 
 CREATE TABLE IF NOT EXISTS jobs (
+    source TEXT NOT NULL,
     board TEXT NOT NULL,
     job_id BIGINT NOT NULL,
-    model JSONB NOT NULL,
-    PRIMARY KEY (board, job_id)
+    title TEXT NOT NULL,
+    absolute_url TEXT NOT NULL,
+    location TEXT NOT NULL,
+    content TEXT NOT NULL,
+    payload JSONB NOT NULL,
+    PRIMARY KEY (source, board, job_id)
 );

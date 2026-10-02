@@ -17,14 +17,13 @@ def main(run_type: RunType) -> None:
     load_dotenv()
     setup_logging()
 
+    log.info(f"Starting {run_type.name}")
     match run_type:
         case RunType.CONNECTIVELY:
-            log.info("Starting Connectively Questions")
             connectively_service.run()
         case RunType.GREENHOUSE:
-            log.info("Starting Greenhouse Jobs")
             greenhouse_service.run()
-    log.info("Finish")
+    log.info(f"Finished {run_type.name}")
 
 
 if __name__ == "__main__":

@@ -44,6 +44,7 @@ def test_job_model_keeps_the_full_post() -> None:
     job = to_job("stripe", payload)
     stored = asdict(job)
     assert set(stored) == {item.name for item in fields(job)}
+    assert stored["source"] == "greenhouse"
     assert stored["board"] == "stripe"
     assert stored["job_id"] == 7
     assert stored["location"] == "Berlin"

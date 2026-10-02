@@ -13,6 +13,7 @@ def apply(board: str, payload: dict) -> GreenhouseJob:
     if not isinstance(job_id, int):
         raise ValueError("job id is missing")
     return GreenhouseJob(
+        source="greenhouse",
         board=board,
         job_id=job_id,
         title=str(payload.get("title") or ""),
